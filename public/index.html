@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auth App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: #fff;
+      padding: 36px 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #333;
+      font-size: 22px;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 14px;
+      margin-bottom: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    input:focus { border-color: #4f46e5; }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #4338ca; }
+
+    .google-btn {
+      background: #fff;
+      color: #333;
+      border: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .google-btn:hover { background: #f5f5f5; }
+
+    .google-btn img { width: 18px; }
+
+    .divider {
+      text-align: center;
+      margin: 16px 0;
+      color: #aaa;
+      font-size: 13px;
+      position: relative;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 42%;
+      height: 1px;
+      background: #e0e0e0;
+    }
+
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .toggle {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .toggle a {
+      color: #4f46e5;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .msg {
+      text-align: center;
+      font-size: 13px;
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .msg.success { background: #ecfdf5; color: #065f46; }
+    .msg.error   { background: #fef2f2; color: #991b1b; }
+
+    .dashboard {
+      text-align: center;
+    }
+
+    .dashboard h2 { color: #4f46e5; margin-bottom: 10px; }
+    .dashboard p  { color: #555; margin-bottom: 20px; font-size: 14px; }
+
+    #logoutBtn {
+      background: #ef4444;
+      max-width: 160px;
+      margin: 0 auto;
+    }
+
+    #logoutBtn:hover { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+<div class="card" id="app">
+
+  <!-- LOGIN FORM -->
+  <div id="loginSection">
+    <h2>Welcome Back</h2>
+    <input type="email" id="loginEmail" placeholder="Email" />
+    <input type="password" id="loginPassword" placeholder="Password" />
+    <button onclick="login()">Login</button>
+
+    <div class="divider">or</div>
+
+    <a href="/auth/google">
+      <button class="google-btn">
+        <img src="https://developers.google.com/identity/images/g-logo.png" alt="G"/>
+        Sign in with Google
+      </button>
+    </a>
+
+    <div class="toggle">Don't have an account? <a onclick="toggle('register')">Register</a></div>
+    <div id="loginMsg" class="msg" style="display:none;"></div>
+  </div>
+
+  <!-- REGISTER FORM -->
+  <div id="registerSection" style="display:none;">
+    <h2>Create Account</h2>
+    <input type="text" id="regName" placeholder="Full Name" />
+    <input type="email" id="regEmail" placeholder="Email" />
+    <input type="password" id="regPassword" placeholder="Password" />
+    <button onclick="register()">Register</button>
+
+    <div class="divider">or</div>
+
+    <a href="/auth/google">
+      <button class="google-btn">
+        <img src="https://developers.google.com/identity/images/g-logo.png" alt="G"/>
+        Sign up with Google
+      </button>
+    </a>
+
+    <div class="toggle">Already have an account? <a onclick="toggle('login')">Login</a></div>
+    <div id="registerMsg" class="msg" style="display:none;"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="dashboard" style="display:none;">
+    <h2>✓ Logged In</h2>
+    <p>Welcome, <strong id="userName"></strong>!</p>
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+  </div>
+
+</div>
+
+<script>
+  // Check if already logged in or redirected from Google
+  window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || localStorage.getItem('token');
+    const name  = params.get('name')  || localStorage.getItem('name');
+
+    if (token) {
+      localStorage.setItem('token', token);
+      if (name) localStorage.setItem('name', decodeURIComponent(name));
+      showDashboard(localStorage.getItem('name'));
+      history.replaceState({}, '', '/'); // clean URL
+    }
+  };
+
+  function toggle(view) {
+    document.getElementById('loginSection').style.display    = view === 'login'    ? 'block' : 'none';
+    document.getElementById('registerSection').style.display = view === 'register' ? 'block' : 'none';
+  }
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + type;
+    el.style.display = 'block';
+  }
+
+  function showDashboard(name) {
+    document.getElementById('loginSection').style.display    = 'none';
+    document.getElementById('registerSection').style.display = 'none';
+    document.getElementById('dashboard').style.display       = 'block';
+    document.getElementById('userName').textContent = name || 'User';
+  }
+
+  async function register() {
+    const name     = document.getElementById('regName').value.trim();
+    const email    = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+
+    const res  = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+
+    showMsg('registerMsg', data.message, data.success ? 'success' : 'error');
+    if (data.success) setTimeout(() => toggle('login'), 1200);
+  }
+
+  async function login() {
+    const email    = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    const res  = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('name', data.name);
+      showDashboard(data.name);
+    } else {
+      showMsg('loginMsg', data.message, 'error');
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('name');
+    document.getElementById('dashboard').style.display    = 'none';
+    document.getElementById('loginSection').style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
